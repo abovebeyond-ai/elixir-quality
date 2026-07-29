@@ -1,0 +1,52 @@
+name: Hub quality report
+description: >
+  Zet het coverage-rapport van een project om in één quality.json en publiceert
+  dat als artifact, zodat de Hub (ci-scan) van elk project dezelfde vorm leest
+  in plaats van per taal een ander formaat te moeten parsen.
+
+inputs:
+  coverage-file:
+    description: 'Pad naar het coverage-rapport (clover.xml, cobertura/coverage.xml, coverage-summary.json of lcov.info). Leeg = geen coverage, de rest wordt nog steeds gepubliceerd.'
+    required: false
+    default: ''
+  tests:
+    description: 'Aantal gedraaide tests (optioneel).'
+    required: false
+    default: ''
+  failures:
+    description: 'Aantal gefaalde tests (optioneel). De uitkomst van de run zelf komt uit de Actions-API, dit is de fijnmazige telling.'
+    required: false
+    default: ''
+  duration-sec:
+    description: 'Duur van de testrun in seconden (optioneel).'
+    required: false
+    default: ''
+  extra:
+    description: 'Vrije JSON met projecteigen metrieken, bv. {"phpstan":0,"bundleKb":412}. Zo vraagt een nieuwe metriek nooit een wijziging in de andere projecten.'
+    required: false
+    default: '{}'
+  artifact-name:
+    description: 'Naam van het artifact. Laat staan tenzij je meerdere rapporten per run publiceert; ci-scan zoekt op "quality".'
+    required: false
+    default: quality
+
+runs:
+  using: composite
+  steps:
+    - name: Rapport samenstellen
+      shell: bash
+      env:
+        COVERAGE_FILE: ${{ inputs.coverage-file }}
+        TESTS: ${{ inputs.tests }}
+        FAILURES: ${{ inputs.failures }}
+        DURATION_SEC: ${{ inputs.duration-sec }}
+        EXTRA: ${{ inputs.extra }}
+        OUT: ${{ runner.temp }}/quality.json
+      run: node ${{ github.action_path }}/scripts/quality.mjs
+    - name: Publiceren
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ runner.temp }}/quality.json
+        retention-days: 90
+        if-no-files-found: error
