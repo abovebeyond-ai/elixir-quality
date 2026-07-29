@@ -12,7 +12,11 @@
  */
 import {readFileSync, writeFileSync} from 'node:fs'
 
+// Niet opgegeven is niet nul: een leeg veld moet `null` blijven, anders leest
+// "geen telling meegegeven" straks als "0 tests, 0 failures", wat het tegendeel
+// beweert van wat er gemeten is.
 const num = (v) => {
+  if (v === undefined || v === null || String(v).trim() === '') return null
   const n = Number(v)
   return Number.isFinite(n) ? n : null
 }
