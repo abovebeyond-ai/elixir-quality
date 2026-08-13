@@ -22,8 +22,16 @@ Na je teststap:
     coverage-file: coverage/clover.xml
 ```
 
-Zet de versie vast op een tag (`@v1`), niet op een branch. Een fout in deze repo
-legt dan geen enkele CI stil; je stapt over wanneer het jou uitkomt.
+Zet de versie vast op een tag (`@v1`), niet op een branch.
+
+Wat die tag wel en niet belooft: `v1` beweegt mee binnen de major, zoals bij
+`actions/checkout@v4`. Verbeteringen en versiebumps van wat deze actie zelf gebruikt komen
+er dus vanzelf bij, zonder dat vijf projecten hun workflow moeten aanpassen. Wat níét
+beweegt is de invoer: verandert die, dan wordt het `v2` en stap je per project bewust over.
+
+Wil je dat er helemaal niets verandert zonder jouw toedoen, pin dan op een commit-sha. En
+sinds de smoke test in `.github/workflows/test.yml` draait de actie bij elke push tegen
+zichzelf, dus een fout hier valt hier op en niet in de CI van een project.
 
 ## Wat het oplevert
 

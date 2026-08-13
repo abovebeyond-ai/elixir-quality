@@ -1,0 +1,68 @@
+name: test
+
+# Deze actie draait in vijf projecten. Tot nu toe testte ze zichzelf niet, dus een fout hier
+# bleek pas als iemands CI omviel, en dan in de repo van dat project. De smoke test hieronder
+# draait de actie zoals een project haar aanroept en controleert de vorm van wat eruit komt.
+#
+# Ze bewijst ook wat een unit test niet kan: dat de upload-stap het op een echte runner doet.
+# De aanleiding voor deze workflow was precies zo'n stap, actions/upload-artifact, die op een
+# uitgefaseerde node-versie draaide.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Coverage-rapport nabootsen
+        run: |
+          mkdir -p coverage
+          cat > coverage/clover.xml <<'XML'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <coverage>
+            <project>
+              <metrics statements="200" coveredstatements="142"/>
+            </project>
+          </coverage>
+          XML
+
+      - name: De actie draaien zoals een project dat doet
+        uses: ./
+        with:
+          coverage-file: coverage/clover.xml
+          tests: 42
+          failures: 0
+          duration-sec: 7
+          extra: '{"phpstan":0}'
+
+      - name: Het artifact terughalen
+        uses: actions/download-artifact@v8
+        with:
+          name: quality
+          path: retrieved
+
+      - name: Controleren wat erin staat
+        run: |
+          set -euo pipefail
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("retrieved/quality.json", "utf8"))
+            const eq = (k, want) => {
+              if (r[k] !== want) { console.error(`${k}: ${JSON.stringify(r[k])}, verwacht ${JSON.stringify(want)}`); process.exit(1) }
+            }
+            eq("schema", 1)
+            eq("coverage", 71)   // 142/200
+            eq("tests", 42)
+            eq("failures", 0)
+            eq("durationSec", 7)
+            // Niet meegegeven blijft null en wordt nooit 0. Dat onderscheid was ooit fout en
+            // liet een run zonder telling lezen als "0 tests, 0 failures".
+            if (r.extra.phpstan !== 0) { console.error("extra kwam niet door"); process.exit(1) }
+            if (!r.sha || !r.repo) { console.error("run-context ontbreekt"); process.exit(1) }
+            console.log("ok:", JSON.stringify(r))
+          '
