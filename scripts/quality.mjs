@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
- * Zet het coverage-rapport van een project om in het vaste quality.json dat de
- * Hub leest. Elk taalecosysteem heeft zijn eigen formaat; dit is de enige plek
+ * Zet het coverage-rapport van een project om in het vaste quality.json dat
+ * Elixir leest. Elk taalecosysteem heeft zijn eigen formaat; dit is de enige plek
  * waar dat verschil bestaat. Alles stroomafwaarts ziet één vorm.
  *
  * Verplichte kern: coverage, tests, failures. Alles wat een project daarnaast
@@ -21,37 +21,69 @@ const num = (v) => {
   return Number.isFinite(n) ? n : null
 }
 
-/** Percentage regels gedekt, of null als het formaat niet herkend wordt. */
+/**
+ * Percentage regels gedekt, of null als het formaat niet herkend wordt.
+ *
+ * HET FORMAAT KOMT UIT DE INHOUD, NIET UIT DE BESTANDSNAAM. Dat was de eerste versie wel,
+ * en ze faalde precies op het meest voorkomende geval: `pest --coverage-clover=coverage.xml`
+ * schrijft clover-XML in een bestand dat coverage.xml heet, waarna de cobertura-tak het las,
+ * geen line-rate vond en null teruggaf. good-governance publiceerde zo maandenlang een leeg
+ * rapport terwijl zijn tests netjes met coverage draaiden.
+ *
+ * Een naam is een gewoonte; de inhoud is wat het is.
+ */
 function coverageOf(file) {
   if (!file) return null
-  let body
-  try { body = readFileSync(file, 'utf8') } catch { return null }
 
-  // Jest/vitest json-summary
-  if (/coverage-summary\.json$/i.test(file)) {
-    try {
-      const pct = JSON.parse(body)?.total?.lines?.pct
-      return typeof pct === 'number' ? Math.round(pct) : null
-    } catch { return null }
+  let body
+  try {
+    body = readFileSync(file, 'utf8')
+  } catch {
+    waarschuw(`coverage-file niet gevonden: ${file}`)
+    return null
   }
-  // PHPUnit clover: laatste <metrics> is projectbreed
-  if (/clover\.xml$/i.test(file)) {
+
+  // Clover (PHPUnit, Pest): de laatste <metrics> is projectbreed.
+  if (body.includes('coveredstatements=')) {
     const last = [...body.matchAll(/<metrics[^>]*statements="(\d+)"[^>]*coveredstatements="(\d+)"/g)].pop()
-    if (!last) return null
+    if (!last) return waarschuw(`clover herkend maar geen projectbrede metrics in ${file}`)
     const [, st, cov] = last
-    return Number(st) > 0 ? Math.round((Number(cov) / Number(st)) * 100) : null
+
+    return Number(st) > 0 ? Math.round((Number(cov) / Number(st)) * 100) : 0
   }
+
   // Cobertura (pytest-cov, gcov, ...)
-  if (/cobertura[^/]*\.xml$/i.test(file) || /coverage\.xml$/i.test(file)) {
-    const rate = body.match(/line-rate="([\d.]+)"/)?.[1]
-    return rate ? Math.round(Number(rate) * 100) : null
-  }
+  const rate = body.match(/line-rate="([\d.]+)"/)?.[1]
+  if (rate !== undefined) return Math.round(Number(rate) * 100)
+
   // lcov
-  if (/lcov\.info$/i.test(file)) {
+  if (/^LF:\d+$/m.test(body)) {
     const found = [...body.matchAll(/^LF:(\d+)$/gm)].reduce((s, m) => s + Number(m[1]), 0)
     const hit = [...body.matchAll(/^LH:(\d+)$/gm)].reduce((s, m) => s + Number(m[1]), 0)
-    return found > 0 ? Math.round((hit / found) * 100) : null
+    return found > 0 ? Math.round((hit / found) * 100) : 0
   }
+
+  // Jest/vitest json-summary
+  if (body.trimStart().startsWith('{')) {
+    try {
+      const pct = JSON.parse(body)?.total?.lines?.pct
+      if (typeof pct === 'number') return Math.round(pct)
+    } catch {}
+  }
+
+  return waarschuw(`formaat van ${file} niet herkend: clover, cobertura, lcov en json-summary geprobeerd`)
+}
+
+/**
+ * Zeggen dat er niets gelezen is, in plaats van stil null te schrijven.
+ *
+ * Een leeg veld en een onleesbaar bestand zien er stroomafwaarts identiek uit, en dat is
+ * hoe dit maandenlang onopgemerkt bleef. De run faalt er niet op - een kwaliteitsrapport
+ * hoort geen build te breken - maar het staat wel in het log.
+ */
+function waarschuw(bericht) {
+  process.stderr.write(`::warning title=elixir-quality::${bericht}\n`)
+
   return null
 }
 
