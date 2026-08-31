@@ -1,7 +1,6 @@
-# hub-quality
+# elixir-quality
 
-Eén GitHub-actie die van elk project hetzelfde kwaliteitsrapport maakt, zodat de
-Hub (Elixir, `ci-scan.mjs`) niet per taal een ander coverage-formaat moet parsen.
+Eén GitHub-actie die van elk project hetzelfde kwaliteitsrapport maakt, zodat Elixir niet per taal een ander coverage-formaat moet parsen.
 
 De actie draait **geen** tests. Dat blijft van het project zelf: een Laravel-suite
 en een vitest-run hebben niets gemeen en centraliseren maakt dat alleen brozer.
@@ -17,7 +16,7 @@ Na je teststap:
   run: vendor/bin/pest --coverage-clover coverage/clover.xml
 
 - name: Kwaliteitsrapport
-  uses: ShaneDeconinck/hub-quality@v1
+  uses: abovebeyond-ai/elixir-quality@v1
   with:
     coverage-file: coverage/clover.xml
 ```
@@ -63,7 +62,7 @@ Een artifact `quality` met één `quality.json`:
 ```
 
 Zo kan één project een metriek toevoegen zonder dat de andere projecten of de
-Hub iets moeten wijzigen. De Hub bewaart wat hij krijgt.
+Elixir iets moeten wijzigen. Elixir bewaart wat het krijgt.
 
 ## Herkende coverage-formaten
 
@@ -78,9 +77,9 @@ Herkent hij het bestand niet, dan blijft `coverage` leeg. Dat is geen fout: het
 rapport wordt nog steeds gepubliceerd, en de kolom blijft open tot het project
 er iets in stopt.
 
-## Waarom een artifact en geen call naar de Hub
+## Waarom een artifact en geen call naar Elixir
 
-Een artifact vraagt geen enkel geheim in de workflow, en houdt de Hub een lezer
+Een artifact vraagt geen enkel geheim in de workflow, en houdt Elixir een lezer
 in plaats van een ontvanger, net als bij de rest van Elixir. Pushen zou fijnmaziger
 zijn (per commit, en je zou stilte kunnen betrappen: "deze CI heeft drie weken
 niet gedraaid"), maar dat kost een token per repo. Zodra die stilte-detectie nodig
