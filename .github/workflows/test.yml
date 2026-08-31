@@ -20,6 +20,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Eerst de parser zelf, want de smoke test draait met één formaat en één naam. De
+      # fout die deze tests vastpinnen zat juist in de KEUZE van de parser: clover in een
+      # bestand dat coverage.xml heet werd als cobertura gelezen en gaf stil null terug.
+      - name: De parser toetsen
+        run: node --test scripts/*.test.mjs
+
       - name: Coverage-rapport nabootsen
         run: |
           mkdir -p coverage
