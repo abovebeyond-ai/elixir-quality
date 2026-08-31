@@ -1,7 +1,7 @@
-name: Hub quality report
+name: Elixir quality report
 description: >
   Zet het coverage-rapport van een project om in één quality.json en publiceert
-  dat als artifact, zodat de Hub (ci-scan) van elk project dezelfde vorm leest
+  dat als artifact, zodat Elixir (de ci-meting) van elk project dezelfde vorm leest
   in plaats van per taal een ander formaat te moeten parsen.
 
 inputs:
